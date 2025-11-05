@@ -31,10 +31,11 @@ export default function LibrosTab() {
     try {
       setLoading(true)
       const response = await fetch(`${API_URL}/libros`)
+      if (!response.ok) throw new Error("Error al cargar libros")
       const data = await response.json()
       setLibros(data)
-    } catch {
-      Swal.fire("Error", "No se pudieron cargar los libros", "error")
+    } catch (err) {
+      Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
     }
@@ -44,7 +45,7 @@ export default function LibrosTab() {
     try {
       const response = await fetch(`${API_URL}/autores`)
       if (response.ok) setAutores(await response.json())
-    } catch {
+    } catch (err) {
       Swal.fire("Error", "No se pudieron cargar los autores", "error")
     }
   }
@@ -53,7 +54,7 @@ export default function LibrosTab() {
     try {
       const response = await fetch(`${API_URL}/editoriales`)
       if (response.ok) setEditoriales(await response.json())
-    } catch {
+    } catch (err) {
       Swal.fire("Error", "No se pudieron cargar las editoriales", "error")
     }
   }
@@ -68,9 +69,8 @@ export default function LibrosTab() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     if (!formData.titulo.trim()) {
-      Swal.fire("Advertencia", "El título es obligatorio", "warning")
+      Swal.fire("Campo requerido", "El título es obligatorio", "warning")
       return
     }
 
@@ -78,25 +78,17 @@ export default function LibrosTab() {
       setLoading(true)
       const url = editingId ? `${API_URL}/libros/${editingId}` : `${API_URL}/libros`
       const method = editingId ? "PUT" : "POST"
-      const dataToSend = {
-        ...formData,
-        anio: formData.anio ? Number.parseInt(formData.anio) : undefined,
-      }
 
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataToSend),
+        body: JSON.stringify({
+          ...formData,
+          anio: formData.anio ? Number(formData.anio) : undefined,
+        }),
       })
 
-      if (!response.ok) throw new Error()
-
-      Swal.fire({
-        icon: "success",
-        title: editingId ? "Libro actualizado" : "Libro agregado",
-        showConfirmButton: false,
-        timer: 1500,
-      })
+      if (!response.ok) throw new Error("Error al guardar el libro")
 
       setFormData({
         titulo: "",
@@ -108,8 +100,18 @@ export default function LibrosTab() {
       })
       setEditingId(null)
       fetchLibros()
-    } catch {
-      Swal.fire("Error", "No se pudo guardar el libro", "error")
+
+      Swal.fire({
+        icon: "success",
+        title: editingId ? "Libro actualizado" : "Libro agregado",
+        text: editingId
+          ? "El libro se actualizó correctamente."
+          : "El libro se agregó correctamente.",
+        timer: 2000,
+        showConfirmButton: false,
+      })
+    } catch (err) {
+      Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
     }
@@ -125,31 +127,35 @@ export default function LibrosTab() {
       editorial: libro.editorial?._id || "",
     })
     setEditingId(libro._id)
-    Swal.fire("Modo edición", "Puedes editar el libro seleccionado", "info")
+    Swal.fire({
+      title: "Editando libro",
+      text: `Estás editando "${libro.titulo}".`,
+      icon: "info",
+      timer: 2000,
+      showConfirmButton: false,
+    })
   }
 
   const handleDelete = async (id) => {
-    const result = await Swal.fire({
+    const confirm = await Swal.fire({
       title: "¿Eliminar libro?",
-      text: "Esta acción no se puede deshacer",
+      text: "Esta acción no se puede deshacer.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     })
 
-    if (!result.isConfirmed) return
+    if (!confirm.isConfirmed) return
 
     try {
       setLoading(true)
       const response = await fetch(`${API_URL}/libros/${id}`, { method: "DELETE" })
-      if (!response.ok) throw new Error()
-      Swal.fire("Eliminado", "El libro fue eliminado con éxito", "success")
+      if (!response.ok) throw new Error("Error al eliminar el libro")
       fetchLibros()
-    } catch {
-      Swal.fire("Error", "No se pudo eliminar el libro", "error")
+      Swal.fire("Eliminado", "El libro fue eliminado correctamente", "success")
+    } catch (err) {
+      Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
     }
@@ -165,7 +171,13 @@ export default function LibrosTab() {
       editorial: "",
     })
     setEditingId(null)
-    Swal.fire("Cancelado", "Se canceló la edición del libro", "info")
+    Swal.fire({
+      icon: "info",
+      title: "Edición cancelada",
+      text: "No se realizaron cambios.",
+      timer: 1500,
+      showConfirmButton: false,
+    })
   }
 
   const getAutorNombre = (id) => autores.find((a) => a._id === id)?.nombre || "Desconocido"
@@ -259,8 +271,11 @@ export default function LibrosTab() {
                 checked={formData.disponible}
                 onChange={handleChange}
                 disabled={loading}
+                className={styles.checkboxInput}
               />
-              <label htmlFor="disponible">Disponible</label>
+              <label htmlFor="disponible" className={styles.checkboxLabel}>
+                Disponible
+              </label>
             </div>
           </div>
 
@@ -289,11 +304,29 @@ export default function LibrosTab() {
               <div key={libro._id} className={styles.item}>
                 <div className={styles.itemContent}>
                   <h3>{libro.titulo}</h3>
-                  {libro.categoria && <p><strong>Categoría:</strong> {libro.categoria}</p>}
-                  {libro.anio && <p><strong>Año:</strong> {libro.anio}</p>}
-                  {libro.autor && <p><strong>Autor:</strong> {getAutorNombre(libro.autor)}</p>}
-                  {libro.editorial && <p><strong>Editorial:</strong> {getEditorialNombre(libro.editorial)}</p>}
-                  <p><strong>Disponible:</strong> {libro.disponible ? "Sí" : "No"}</p>
+                  {libro.categoria && (
+                    <p>
+                      <strong>Categoría:</strong> {libro.categoria}
+                    </p>
+                  )}
+                  {libro.anio && (
+                    <p>
+                      <strong>Año:</strong> {libro.anio}
+                    </p>
+                  )}
+                  {libro.autor && (
+                    <p>
+                      <strong>Autor:</strong> {getAutorNombre(libro.autor)}
+                    </p>
+                  )}
+                  {libro.editorial && (
+                    <p>
+                      <strong>Editorial:</strong> {getEditorialNombre(libro.editorial)}
+                    </p>
+                  )}
+                  <p>
+                    <strong>Disponible:</strong> {libro.disponible ? "Sí" : "No"}
+                  </p>
                 </div>
                 <div className={styles.itemActions}>
                   <button onClick={() => handleEdit(libro)} className={styles.editBtn} disabled={loading}>
