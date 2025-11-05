@@ -5,28 +5,28 @@ import styles from "./Tab.module.css"
 
 const API_URL = "http://localhost:5000/api"
 
-export default function AutoresTab() {
-  const [autores, setAutores] = useState([])
+export default function EditorialesTab() {
+  const [editoriales, setEditoriales] = useState([])
   const [formData, setFormData] = useState({
     nombre: "",
-    nacionalidad: "",
-    fechaNacimiento: "",
+    pais: "",
+    anioFundacion: "",
   })
   const [editingId, setEditingId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    fetchAutores()
+    fetchEditoriales()
   }, [])
 
-  const fetchAutores = async () => {
+  const fetchEditoriales = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_URL}/autores`)
-      if (!response.ok) throw new Error("Error al cargar autores")
+      const response = await fetch(`${API_URL}/editoriales`)
+      if (!response.ok) throw new Error("Error al cargar editoriales")
       const data = await response.json()
-      setAutores(data)
+      setEditoriales(data)
       setError("")
     } catch (err) {
       setError(err.message)
@@ -52,7 +52,7 @@ export default function AutoresTab() {
 
     try {
       setLoading(true)
-      const url = editingId ? `${API_URL}/autores/${editingId}` : `${API_URL}/autores`
+      const url = editingId ? `${API_URL}/editoriales/${editingId}` : `${API_URL}/editoriales`
 
       const method = editingId ? "PUT" : "POST"
 
@@ -64,10 +64,10 @@ export default function AutoresTab() {
 
       if (!response.ok) throw new Error("Error en la operación")
 
-      setFormData({ nombre: "", nacionalidad: "", fechaNacimiento: "" })
+      setFormData({ nombre: "", pais: "", anioFundacion: "" })
       setEditingId(null)
       setError("")
-      fetchAutores()
+      fetchEditoriales()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -75,26 +75,26 @@ export default function AutoresTab() {
     }
   }
 
-  const handleEdit = (autor) => {
+  const handleEdit = (editorial) => {
     setFormData({
-      nombre: autor.nombre,
-      nacionalidad: autor.nacionalidad || "",
-      fechaNacimiento: autor.fechaNacimiento ? autor.fechaNacimiento.split("T")[0] : "",
+      nombre: editorial.nombre,
+      pais: editorial.pais || "",
+      anioFundacion: editorial.anioFundacion || "",
     })
-    setEditingId(autor._id)
+    setEditingId(editorial._id)
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm("¿Estás seguro de que quieres eliminar este autor?")) return
+    if (!window.confirm("¿Estás seguro de que quieres eliminar esta editorial?")) return
 
     try {
       setLoading(true)
-      const response = await fetch(`${API_URL}/autores/${id}`, {
+      const response = await fetch(`${API_URL}/editoriales/${id}`, {
         method: "DELETE",
       })
       if (!response.ok) throw new Error("Error al eliminar")
       setError("")
-      fetchAutores()
+      fetchEditoriales()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -103,14 +103,14 @@ export default function AutoresTab() {
   }
 
   const handleCancel = () => {
-    setFormData({ nombre: "", nacionalidad: "", fechaNacimiento: "" })
+    setFormData({ nombre: "", pais: "", anioFundacion: "" })
     setEditingId(null)
   }
 
   return (
     <div className={styles.tabContent}>
       <div className={styles.formSection}>
-        <h2>{editingId ? "Editar Autor" : "Agregar Nuevo Autor"}</h2>
+        <h2>{editingId ? "Editar Editorial" : "Agregar Nueva Editorial"}</h2>
         {error && <div className={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
@@ -122,32 +122,33 @@ export default function AutoresTab() {
               name="nombre"
               value={formData.nombre}
               onChange={handleChange}
-              placeholder="Nombre del autor"
+              placeholder="Nombre de la editorial"
               disabled={loading}
             />
           </div>
 
           <div className={styles.formGroup}>
-            <label htmlFor="nacionalidad">Nacionalidad</label>
+            <label htmlFor="pais">País</label>
             <input
               type="text"
-              id="nacionalidad"
-              name="nacionalidad"
-              value={formData.nacionalidad}
+              id="pais"
+              name="pais"
+              value={formData.pais}
               onChange={handleChange}
-              placeholder="Nacionalidad"
+              placeholder="País"
               disabled={loading}
             />
           </div>
 
           <div className={styles.formGroup}>
-            <label htmlFor="fechaNacimiento">Fecha de Nacimiento</label>
+            <label htmlFor="anioFundacion">Año de Fundación</label>
             <input
-              type="date"
-              id="fechaNacimiento"
-              name="fechaNacimiento"
-              value={formData.fechaNacimiento}
+              type="number"
+              id="anioFundacion"
+              name="anioFundacion"
+              value={formData.anioFundacion}
               onChange={handleChange}
+              placeholder="Año"
               disabled={loading}
             />
           </div>
@@ -166,33 +167,33 @@ export default function AutoresTab() {
       </div>
 
       <div className={styles.listSection}>
-        <h2>Lista de Autores</h2>
-        {loading && !autores.length ? (
+        <h2>Lista de Editoriales</h2>
+        {loading && !editoriales.length ? (
           <p className={styles.loading}>Cargando...</p>
-        ) : autores.length === 0 ? (
-          <p className={styles.empty}>No hay autores registrados</p>
+        ) : editoriales.length === 0 ? (
+          <p className={styles.empty}>No hay editoriales registradas</p>
         ) : (
           <div className={styles.list}>
-            {autores.map((autor) => (
-              <div key={autor._id} className={styles.item}>
+            {editoriales.map((editorial) => (
+              <div key={editorial._id} className={styles.item}>
                 <div className={styles.itemContent}>
-                  <h3>{autor.nombre}</h3>
-                  {autor.nacionalidad && (
+                  <h3>{editorial.nombre}</h3>
+                  {editorial.pais && (
                     <p>
-                      <strong>Nacionalidad:</strong> {autor.nacionalidad}
+                      <strong>País:</strong> {editorial.pais}
                     </p>
                   )}
-                  {autor.fechaNacimiento && (
+                  {editorial.anioFundacion && (
                     <p>
-                      <strong>Fecha de Nacimiento:</strong> {new Date(autor.fechaNacimiento).toLocaleDateString()}
+                      <strong>Año de Fundación:</strong> {editorial.anioFundacion}
                     </p>
                   )}
                 </div>
                 <div className={styles.itemActions}>
-                  <button onClick={() => handleEdit(autor)} className={styles.editBtn} disabled={loading}>
+                  <button onClick={() => handleEdit(editorial)} className={styles.editBtn} disabled={loading}>
                     Editar
                   </button>
-                  <button onClick={() => handleDelete(autor._id)} className={styles.deleteBtn} disabled={loading}>
+                  <button onClick={() => handleDelete(editorial._id)} className={styles.deleteBtn} disabled={loading}>
                     Eliminar
                   </button>
                 </div>
