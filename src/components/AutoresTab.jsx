@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Swal from "sweetalert2"
 import styles from "./Tab.module.css"
 
 const API_URL = "http://localhost:5000/api"
@@ -30,6 +31,7 @@ export default function AutoresTab() {
       setError("")
     } catch (err) {
       setError(err.message)
+      Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
     }
@@ -46,14 +48,13 @@ export default function AutoresTab() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.nombre.trim()) {
-      setError("El nombre es requerido")
+      Swal.fire("Campo requerido", "El nombre del autor es obligatorio", "warning")
       return
     }
 
     try {
       setLoading(true)
       const url = editingId ? `${API_URL}/autores/${editingId}` : `${API_URL}/autores`
-
       const method = editingId ? "PUT" : "POST"
 
       const response = await fetch(url, {
@@ -68,8 +69,19 @@ export default function AutoresTab() {
       setEditingId(null)
       setError("")
       fetchAutores()
+
+      Swal.fire({
+        icon: "success",
+        title: editingId ? "Autor actualizado" : "Autor agregado",
+        text: editingId
+          ? "El autor fue actualizado correctamente."
+          : "El autor fue agregado exitosamente.",
+        timer: 2000,
+        showConfirmButton: false,
+      })
     } catch (err) {
       setError(err.message)
+      Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
     }
@@ -82,21 +94,39 @@ export default function AutoresTab() {
       fechaNacimiento: autor.fechaNacimiento ? autor.fechaNacimiento.split("T")[0] : "",
     })
     setEditingId(autor._id)
+    Swal.fire({
+      icon: "info",
+      title: "Editando autor",
+      text: `Estás editando a "${autor.nombre}".`,
+      timer: 2000,
+      showConfirmButton: false,
+    })
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm("¿Estás seguro de que quieres eliminar este autor?")) return
+    const confirm = await Swal.fire({
+      title: "¿Eliminar autor?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    })
+
+    if (!confirm.isConfirmed) return
 
     try {
       setLoading(true)
       const response = await fetch(`${API_URL}/autores/${id}`, {
         method: "DELETE",
       })
-      if (!response.ok) throw new Error("Error al eliminar")
+      if (!response.ok) throw new Error("Error al eliminar autor")
       setError("")
       fetchAutores()
+      Swal.fire("Eliminado", "El autor fue eliminado correctamente", "success")
     } catch (err) {
       setError(err.message)
+      Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
     }
@@ -105,6 +135,13 @@ export default function AutoresTab() {
   const handleCancel = () => {
     setFormData({ nombre: "", nacionalidad: "", fechaNacimiento: "" })
     setEditingId(null)
+    Swal.fire({
+      icon: "info",
+      title: "Edición cancelada",
+      text: "No se realizaron cambios.",
+      timer: 1500,
+      showConfirmButton: false,
+    })
   }
 
   return (
@@ -184,7 +221,8 @@ export default function AutoresTab() {
                   )}
                   {autor.fechaNacimiento && (
                     <p>
-                      <strong>Fecha de Nacimiento:</strong> {new Date(autor.fechaNacimiento).toLocaleDateString()}
+                      <strong>Fecha de Nacimiento:</strong>{" "}
+                      {new Date(autor.fechaNacimiento).toLocaleDateString()}
                     </p>
                   )}
                 </div>

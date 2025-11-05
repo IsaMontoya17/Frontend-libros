@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Swal from "sweetalert2"
 import styles from "./Tab.module.css"
 
 const API_URL = "http://localhost:5000/api"
@@ -30,6 +31,7 @@ export default function EditorialesTab() {
       setError("")
     } catch (err) {
       setError(err.message)
+      Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
     }
@@ -46,14 +48,13 @@ export default function EditorialesTab() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.nombre.trim()) {
-      setError("El nombre es requerido")
+      Swal.fire("Campo requerido", "El nombre de la editorial es obligatorio", "warning")
       return
     }
 
     try {
       setLoading(true)
       const url = editingId ? `${API_URL}/editoriales/${editingId}` : `${API_URL}/editoriales`
-
       const method = editingId ? "PUT" : "POST"
 
       const response = await fetch(url, {
@@ -68,8 +69,19 @@ export default function EditorialesTab() {
       setEditingId(null)
       setError("")
       fetchEditoriales()
+
+      Swal.fire({
+        icon: "success",
+        title: editingId ? "Editorial actualizada" : "Editorial agregada",
+        text: editingId
+          ? "La editorial se actualizó correctamente."
+          : "La editorial se agregó correctamente.",
+        timer: 2000,
+        showConfirmButton: false,
+      })
     } catch (err) {
       setError(err.message)
+      Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
     }
@@ -82,21 +94,37 @@ export default function EditorialesTab() {
       anioFundacion: editorial.anioFundacion || "",
     })
     setEditingId(editorial._id)
+    Swal.fire({
+      title: "Editando editorial",
+      text: `Estás editando "${editorial.nombre}".`,
+      icon: "info",
+      timer: 2000,
+      showConfirmButton: false,
+    })
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm("¿Estás seguro de que quieres eliminar esta editorial?")) return
+    const confirm = await Swal.fire({
+      title: "¿Eliminar editorial?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    })
+
+    if (!confirm.isConfirmed) return
 
     try {
       setLoading(true)
-      const response = await fetch(`${API_URL}/editoriales/${id}`, {
-        method: "DELETE",
-      })
+      const response = await fetch(`${API_URL}/editoriales/${id}`, { method: "DELETE" })
       if (!response.ok) throw new Error("Error al eliminar")
       setError("")
       fetchEditoriales()
+      Swal.fire("Eliminada", "La editorial fue eliminada correctamente", "success")
     } catch (err) {
       setError(err.message)
+      Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
     }
@@ -105,6 +133,13 @@ export default function EditorialesTab() {
   const handleCancel = () => {
     setFormData({ nombre: "", pais: "", anioFundacion: "" })
     setEditingId(null)
+    Swal.fire({
+      icon: "info",
+      title: "Edición cancelada",
+      text: "No se realizaron cambios.",
+      timer: 1500,
+      showConfirmButton: false,
+    })
   }
 
   return (
