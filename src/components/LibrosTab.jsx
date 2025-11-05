@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Swal from "sweetalert2"
 import styles from "./Tab.module.css"
 
 const API_URL = "http://localhost:5000/api"
@@ -19,10 +20,8 @@ export default function LibrosTab() {
   })
   const [editingId, setEditingId] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
 
   useEffect(() => {
-    console.log("📘 [Sawl] Cargando LibrosTab...")
     fetchLibros()
     fetchAutores()
     fetchEditoriales()
@@ -31,16 +30,11 @@ export default function LibrosTab() {
   const fetchLibros = async () => {
     try {
       setLoading(true)
-      console.log("📚 [Sawl] Obteniendo lista de libros...")
       const response = await fetch(`${API_URL}/libros`)
-      if (!response.ok) throw new Error("Error al cargar libros")
       const data = await response.json()
       setLibros(data)
-      console.log("✅ [Sawl] Libros cargados correctamente:", data)
-      setError("")
-    } catch (err) {
-      console.error("❌ [Sawl] Error al obtener libros:", err)
-      setError(err.message)
+    } catch {
+      Swal.fire("Error", "No se pudieron cargar los libros", "error")
     } finally {
       setLoading(false)
     }
@@ -48,35 +42,24 @@ export default function LibrosTab() {
 
   const fetchAutores = async () => {
     try {
-      console.log("👩‍💼 [Sawl] Cargando autores...")
       const response = await fetch(`${API_URL}/autores`)
-      if (response.ok) {
-        const data = await response.json()
-        setAutores(data)
-        console.log("✅ [Sawl] Autores cargados:", data)
-      }
-    } catch (err) {
-      console.error("❌ [Sawl] Error cargando autores:", err)
+      if (response.ok) setAutores(await response.json())
+    } catch {
+      Swal.fire("Error", "No se pudieron cargar los autores", "error")
     }
   }
 
   const fetchEditoriales = async () => {
     try {
-      console.log("🏢 [Sawl] Cargando editoriales...")
       const response = await fetch(`${API_URL}/editoriales`)
-      if (response.ok) {
-        const data = await response.json()
-        setEditoriales(data)
-        console.log("✅ [Sawl] Editoriales cargadas:", data)
-      }
-    } catch (err) {
-      console.error("❌ [Sawl] Error cargando editoriales:", err)
+      if (response.ok) setEditoriales(await response.json())
+    } catch {
+      Swal.fire("Error", "No se pudieron cargar las editoriales", "error")
     }
   }
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    console.log(`✏️ [Sawl] Cambió el campo '${name}' a:`, type === "checkbox" ? checked : value)
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -85,11 +68,9 @@ export default function LibrosTab() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log("🚀 [Sawl] Enviando formulario de libro:", formData)
 
     if (!formData.titulo.trim()) {
-      console.warn("⚠️ [Sawl] El título es requerido")
-      setError("El título es requerido")
+      Swal.fire("Advertencia", "El título es obligatorio", "warning")
       return
     }
 
@@ -97,12 +78,8 @@ export default function LibrosTab() {
       setLoading(true)
       const url = editingId ? `${API_URL}/libros/${editingId}` : `${API_URL}/libros`
       const method = editingId ? "PUT" : "POST"
-      console.log(`🔄 [Sawl] ${editingId ? "Actualizando" : "Creando"} libro en:`, url)
-
       const dataToSend = {
         ...formData,
-        autor: formData.autor || undefined,
-        editorial: formData.editorial || undefined,
         anio: formData.anio ? Number.parseInt(formData.anio) : undefined,
       }
 
@@ -112,9 +89,15 @@ export default function LibrosTab() {
         body: JSON.stringify(dataToSend),
       })
 
-      if (!response.ok) throw new Error("Error en la operación")
+      if (!response.ok) throw new Error()
 
-      console.log("✅ [Sawl] Libro guardado correctamente")
+      Swal.fire({
+        icon: "success",
+        title: editingId ? "Libro actualizado" : "Libro agregado",
+        showConfirmButton: false,
+        timer: 1500,
+      })
+
       setFormData({
         titulo: "",
         categoria: "",
@@ -124,18 +107,15 @@ export default function LibrosTab() {
         editorial: "",
       })
       setEditingId(null)
-      setError("")
       fetchLibros()
-    } catch (err) {
-      console.error("❌ [Sawl] Error al guardar libro:", err)
-      setError(err.message)
+    } catch {
+      Swal.fire("Error", "No se pudo guardar el libro", "error")
     } finally {
       setLoading(false)
     }
   }
 
   const handleEdit = (libro) => {
-    console.log("✏️ [Sawl] Editando libro:", libro)
     setFormData({
       titulo: libro.titulo,
       categoria: libro.categoria || "",
@@ -145,34 +125,37 @@ export default function LibrosTab() {
       editorial: libro.editorial?._id || "",
     })
     setEditingId(libro._id)
+    Swal.fire("Modo edición", "Puedes editar el libro seleccionado", "info")
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm("¿Estás seguro de que quieres eliminar este libro?")) {
-      console.log("🟡 [Sawl] Eliminación cancelada por el usuario")
-      return
-    }
+    const result = await Swal.fire({
+      title: "¿Eliminar libro?",
+      text: "Esta acción no se puede deshacer",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    })
+
+    if (!result.isConfirmed) return
 
     try {
       setLoading(true)
-      console.log("🗑️ [Sawl] Eliminando libro con ID:", id)
-      const response = await fetch(`${API_URL}/libros/${id}`, {
-        method: "DELETE",
-      })
-      if (!response.ok) throw new Error("Error al eliminar")
-      console.log("✅ [Sawl] Libro eliminado correctamente")
-      setError("")
+      const response = await fetch(`${API_URL}/libros/${id}`, { method: "DELETE" })
+      if (!response.ok) throw new Error()
+      Swal.fire("Eliminado", "El libro fue eliminado con éxito", "success")
       fetchLibros()
-    } catch (err) {
-      console.error("❌ [Sawl] Error al eliminar libro:", err)
-      setError(err.message)
+    } catch {
+      Swal.fire("Error", "No se pudo eliminar el libro", "error")
     } finally {
       setLoading(false)
     }
   }
 
   const handleCancel = () => {
-    console.log("↩️ [Sawl] Cancelando edición de libro")
     setFormData({
       titulo: "",
       categoria: "",
@@ -182,6 +165,7 @@ export default function LibrosTab() {
       editorial: "",
     })
     setEditingId(null)
+    Swal.fire("Cancelado", "Se canceló la edición del libro", "info")
   }
 
   const getAutorNombre = (id) => autores.find((a) => a._id === id)?.nombre || "Desconocido"
@@ -191,9 +175,7 @@ export default function LibrosTab() {
     <div className={styles.tabContent}>
       <div className={styles.formSection}>
         <h2>{editingId ? "Editar Libro" : "Agregar Nuevo Libro"}</h2>
-        {error && <div className={styles.error}>{error}</div>}
 
-        {/* Formulario */}
         <form onSubmit={handleSubmit}>
           <div className={styles.formGroup}>
             <label htmlFor="titulo">Título *</label>
@@ -277,11 +259,8 @@ export default function LibrosTab() {
                 checked={formData.disponible}
                 onChange={handleChange}
                 disabled={loading}
-                className={styles.checkboxInput}
               />
-              <label htmlFor="disponible" className={styles.checkboxLabel}>
-                Disponible
-              </label>
+              <label htmlFor="disponible">Disponible</label>
             </div>
           </div>
 
@@ -298,7 +277,6 @@ export default function LibrosTab() {
         </form>
       </div>
 
-      {/* Lista de libros */}
       <div className={styles.listSection}>
         <h2>Lista de Libros</h2>
         {loading && !libros.length ? (
