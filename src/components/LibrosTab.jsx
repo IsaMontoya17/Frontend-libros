@@ -20,6 +20,7 @@ export default function LibrosTab() {
   })
   const [editingId, setEditingId] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     fetchLibros()
@@ -34,7 +35,9 @@ export default function LibrosTab() {
       if (!response.ok) throw new Error("Error al cargar libros")
       const data = await response.json()
       setLibros(data)
+      setError("")
     } catch (err) {
+      setError(err.message)
       Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
@@ -44,18 +47,22 @@ export default function LibrosTab() {
   const fetchAutores = async () => {
     try {
       const response = await fetch(`${API_URL}/autores`)
-      if (response.ok) setAutores(await response.json())
+      if (response.ok) {
+        setAutores(await response.json())
+      }
     } catch (err) {
-      Swal.fire("Error", "No se pudieron cargar los autores", "error")
+      console.error("Error cargando autores:", err)
     }
   }
 
   const fetchEditoriales = async () => {
     try {
       const response = await fetch(`${API_URL}/editoriales`)
-      if (response.ok) setEditoriales(await response.json())
+      if (response.ok) {
+        setEditoriales(await response.json())
+      }
     } catch (err) {
-      Swal.fire("Error", "No se pudieron cargar las editoriales", "error")
+      console.error("Error cargando editoriales:", err)
     }
   }
 
@@ -70,7 +77,8 @@ export default function LibrosTab() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.titulo.trim()) {
-      Swal.fire("Campo requerido", "El título es obligatorio", "warning")
+      setError("El título es requerido")
+      Swal.fire("Atención", "El título es requerido", "warning")
       return
     }
 
@@ -79,16 +87,20 @@ export default function LibrosTab() {
       const url = editingId ? `${API_URL}/libros/${editingId}` : `${API_URL}/libros`
       const method = editingId ? "PUT" : "POST"
 
+      const dataToSend = {
+        ...formData,
+        autor: formData.autor || undefined,
+        editorial: formData.editorial || undefined,
+        anio: formData.anio ? Number.parseInt(formData.anio) : undefined,
+      }
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          anio: formData.anio ? Number(formData.anio) : undefined,
-        }),
+        body: JSON.stringify(dataToSend),
       })
 
-      if (!response.ok) throw new Error("Error al guardar el libro")
+      if (!response.ok) throw new Error("Error en la operación")
 
       setFormData({
         titulo: "",
@@ -99,18 +111,16 @@ export default function LibrosTab() {
         editorial: "",
       })
       setEditingId(null)
+      setError("")
       fetchLibros()
 
-      Swal.fire({
-        icon: "success",
-        title: editingId ? "Libro actualizado" : "Libro agregado",
-        text: editingId
-          ? "El libro se actualizó correctamente."
-          : "El libro se agregó correctamente.",
-        timer: 2000,
-        showConfirmButton: false,
-      })
+      Swal.fire(
+        "Éxito",
+        editingId ? "Libro actualizado correctamente" : "Libro agregado correctamente",
+        "success"
+      )
     } catch (err) {
+      setError(err.message)
       Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
@@ -127,34 +137,32 @@ export default function LibrosTab() {
       editorial: libro.editorial?._id || "",
     })
     setEditingId(libro._id)
-    Swal.fire({
-      title: "Editando libro",
-      text: `Estás editando "${libro.titulo}".`,
-      icon: "info",
-      timer: 2000,
-      showConfirmButton: false,
-    })
+    Swal.fire("Modo edición", "Puedes modificar los datos del libro", "info")
   }
 
   const handleDelete = async (id) => {
-    const confirm = await Swal.fire({
-      title: "¿Eliminar libro?",
-      text: "Esta acción no se puede deshacer.",
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Esta acción eliminará el libro permanentemente",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     })
 
-    if (!confirm.isConfirmed) return
+    if (!result.isConfirmed) return
 
     try {
       setLoading(true)
-      const response = await fetch(`${API_URL}/libros/${id}`, { method: "DELETE" })
-      if (!response.ok) throw new Error("Error al eliminar el libro")
+      const response = await fetch(`${API_URL}/libros/${id}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) throw new Error("Error al eliminar")
+      setError("")
       fetchLibros()
-      Swal.fire("Eliminado", "El libro fue eliminado correctamente", "success")
+      Swal.fire("Eliminado", "El libro ha sido eliminado correctamente", "success")
     } catch (err) {
+      setError(err.message)
       Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
@@ -171,13 +179,7 @@ export default function LibrosTab() {
       editorial: "",
     })
     setEditingId(null)
-    Swal.fire({
-      icon: "info",
-      title: "Edición cancelada",
-      text: "No se realizaron cambios.",
-      timer: 1500,
-      showConfirmButton: false,
-    })
+    Swal.fire("Cancelado", "Edición cancelada", "info")
   }
 
   const getAutorNombre = (id) => autores.find((a) => a._id === id)?.nombre || "Desconocido"
@@ -187,6 +189,7 @@ export default function LibrosTab() {
     <div className={styles.tabContent}>
       <div className={styles.formSection}>
         <h2>{editingId ? "Editar Libro" : "Agregar Nuevo Libro"}</h2>
+        {error && <div className={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className={styles.formGroup}>
