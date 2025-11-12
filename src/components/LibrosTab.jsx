@@ -21,18 +21,22 @@ export default function LibrosTab() {
   const [filters, setFilters] = useState({
     titulo: "",
     categoria: "",
-    editorial: "",
     disponible: "todos",
   })
   const [editingId, setEditingId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [filteredLibros, setFilteredLibros] = useState([])
 
   useEffect(() => {
     fetchLibros()
     fetchAutores()
     fetchEditoriales()
   }, [])
+
+  useEffect(() => {
+    applyFilters()
+  }, [filters])
 
   const fetchLibros = async () => {
     try {
@@ -41,6 +45,7 @@ export default function LibrosTab() {
       if (!response.ok) throw new Error("Error al cargar libros")
       const data = await response.json()
       setLibros(data)
+      setFilteredLibros(data)
       setError("")
     } catch (err) {
       setError(err.message)
@@ -84,21 +89,53 @@ export default function LibrosTab() {
     }))
   }
 
-  const getFilteredLibros = () => {
-    return libros.filter((libro) => {
-      const matchTitulo = libro.titulo.toLowerCase().includes(filters.titulo.toLowerCase())
-      const matchCategoria =
-        filters.categoria === "" ||
-        (libro.categoria && libro.categoria.toLowerCase().includes(filters.categoria.toLowerCase()))
-      const matchEditorial =
-        filters.editorial === "" ||
-        libro.editorial?._id === filters.editorial ||
-        libro.editorial === filters.editorial
-      const matchDisponible =
-        filters.disponible === "todos" ||
-        (filters.disponible === "disponible" ? libro.disponible : !libro.disponible)
-      return matchTitulo && matchCategoria && matchEditorial && matchDisponible
-    })
+  const applyFilters = async () => {
+    try {
+      const noFilters = !filters.titulo.trim() && !filters.categoria.trim() && filters.disponible === "todos"
+
+      if (noFilters) {
+        setFilteredLibros(libros)
+        return
+      }
+
+      const resultsSets = []
+
+      if (filters.titulo.trim()) {
+        const resp = await fetch(`${API_URL}/libros/buscar/titulo/${encodeURIComponent(filters.titulo)}`)
+        if (!resp.ok) throw new Error("Error buscando por título")
+        resultsSets.push(await resp.json())
+      }
+
+      if (filters.categoria.trim()) {
+        const resp = await fetch(`${API_URL}/libros/buscar/categoria/${encodeURIComponent(filters.categoria)}`)
+        if (!resp.ok) throw new Error("Error buscando por categoría")
+        resultsSets.push(await resp.json())
+      }
+
+      if (filters.disponible !== "todos") {
+        const disponibilidad = filters.disponible === "disponible" ? "true" : "false"
+        const resp = await fetch(`${API_URL}/libros/buscar/disponible/${disponibilidad}`)
+        if (!resp.ok) throw new Error("Error buscando por disponibilidad")
+        resultsSets.push(await resp.json())
+      }
+
+      if (resultsSets.length === 0) {
+        setFilteredLibros(libros)
+        return
+      }
+
+      let intersection = resultsSets[0] || []
+      for (let i = 1; i < resultsSets.length; i++) {
+        const current = resultsSets[i] || []
+        const ids = new Set(current.map((x) => String(x._id)))
+        intersection = intersection.filter((item) => ids.has(String(item._id)))
+      }
+
+      setFilteredLibros(intersection)
+    } catch (err) {
+      console.error("Error aplicando filtros:", err)
+      setFilteredLibros([])
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -143,9 +180,7 @@ export default function LibrosTab() {
       Swal.fire({
         icon: "success",
         title: editingId ? "Libro actualizado" : "Libro agregado",
-        text: editingId
-          ? "El libro fue actualizado correctamente."
-          : "El libro fue agregado correctamente.",
+        text: editingId ? "El libro fue actualizado correctamente." : "El libro fue agregado correctamente.",
         timer: 2000,
         showConfirmButton: false,
       })
@@ -224,8 +259,6 @@ export default function LibrosTab() {
 
   const getAutorNombre = (id) => autores.find((a) => a._id === id)?.nombre || "Desconocido"
   const getEditorialNombre = (id) => editoriales.find((e) => e._id === id)?.nombre || "Desconocida"
-
-  const filteredLibros = getFilteredLibros()
 
   return (
     <div className={styles.tabContent}>
@@ -362,18 +395,6 @@ export default function LibrosTab() {
               onChange={handleFilterChange}
               placeholder="Filtrar por categoría..."
             />
-          </div>
-
-          <div className={styles.filterGroup}>
-            <label htmlFor="filterEditorial">Editorial:</label>
-            <select id="filterEditorial" name="editorial" value={filters.editorial} onChange={handleFilterChange}>
-              <option value="">Todas las editoriales</option>
-              {editoriales.map((editorial) => (
-                <option key={editorial._id} value={editorial._id}>
-                  {editorial.nombre}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div className={styles.filterGroup}>

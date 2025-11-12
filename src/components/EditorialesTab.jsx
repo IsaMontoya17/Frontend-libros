@@ -16,10 +16,16 @@ export default function EditorialesTab() {
   const [editingId, setEditingId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [searchNombre, setSearchNombre] = useState("")
+  const [filteredEditoriales, setFilteredEditoriales] = useState([])
 
   useEffect(() => {
     fetchEditoriales()
   }, [])
+
+  useEffect(() => {
+    applySearch()
+  }, [searchNombre])
 
   const fetchEditoriales = async () => {
     try {
@@ -28,6 +34,7 @@ export default function EditorialesTab() {
       if (!response.ok) throw new Error("Error al cargar editoriales")
       const data = await response.json()
       setEditoriales(data)
+      setFilteredEditoriales(data)
       setError("")
     } catch (err) {
       setError(err.message)
@@ -43,6 +50,23 @@ export default function EditorialesTab() {
       ...prev,
       [name]: value,
     }))
+  }
+
+  const applySearch = async () => {
+    if (!searchNombre.trim()) {
+      setFilteredEditoriales(editoriales)
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/editoriales/buscar/${encodeURIComponent(searchNombre)}`)
+      if (!response.ok) throw new Error("Error en búsqueda")
+      const data = await response.json()
+      setFilteredEditoriales(data)
+    } catch (err) {
+      console.error("Error en búsqueda:", err)
+      setFilteredEditoriales([])
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -73,9 +97,7 @@ export default function EditorialesTab() {
       Swal.fire({
         icon: "success",
         title: editingId ? "Editorial actualizada" : "Editorial agregada",
-        text: editingId
-          ? "La editorial se actualizó correctamente."
-          : "La editorial se agregó correctamente.",
+        text: editingId ? "La editorial se actualizó correctamente." : "La editorial se agregó correctamente.",
         timer: 2000,
         showConfirmButton: false,
       })
@@ -203,13 +225,30 @@ export default function EditorialesTab() {
 
       <div className={styles.listSection}>
         <h2>Lista de Editoriales</h2>
+
+        <div className={styles.filterSection}>
+          <div className={styles.filterGroup}>
+            <label htmlFor="searchNombre">Buscar por nombre:</label>
+            <input
+              type="text"
+              id="searchNombre"
+              value={searchNombre}
+              onChange={(e) => setSearchNombre(e.target.value)}
+              placeholder="Nombre de la editorial..."
+            />
+          </div>
+        </div>
+
         {loading && !editoriales.length ? (
           <p className={styles.loading}>Cargando...</p>
-        ) : editoriales.length === 0 ? (
-          <p className={styles.empty}>No hay editoriales registradas</p>
+        ) : filteredEditoriales.length === 0 ? (
+          <p className={styles.empty}>No hay editoriales que coincidan con la búsqueda</p>
         ) : (
           <div className={styles.list}>
-            {editoriales.map((editorial) => (
+            <p className={styles.resultCount}>
+              Mostrando {filteredEditoriales.length} de {editoriales.length} editoriales
+            </p>
+            {filteredEditoriales.map((editorial) => (
               <div key={editorial._id} className={styles.item}>
                 <div className={styles.itemContent}>
                   <h3>{editorial.nombre}</h3>
