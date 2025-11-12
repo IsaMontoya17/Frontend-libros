@@ -18,6 +18,12 @@ export default function LibrosTab() {
     autor: "",
     editorial: "",
   })
+  const [filters, setFilters] = useState({
+    titulo: "",
+    categoria: "",
+    editorial: "",
+    disponible: "todos",
+  })
   const [editingId, setEditingId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -47,9 +53,7 @@ export default function LibrosTab() {
   const fetchAutores = async () => {
     try {
       const response = await fetch(`${API_URL}/autores`)
-      if (response.ok) {
-        setAutores(await response.json())
-      }
+      if (response.ok) setAutores(await response.json())
     } catch (err) {
       console.error("Error cargando autores:", err)
     }
@@ -58,9 +62,7 @@ export default function LibrosTab() {
   const fetchEditoriales = async () => {
     try {
       const response = await fetch(`${API_URL}/editoriales`)
-      if (response.ok) {
-        setEditoriales(await response.json())
-      }
+      if (response.ok) setEditoriales(await response.json())
     } catch (err) {
       console.error("Error cargando editoriales:", err)
     }
@@ -74,11 +76,35 @@ export default function LibrosTab() {
     }))
   }
 
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target
+    setFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const getFilteredLibros = () => {
+    return libros.filter((libro) => {
+      const matchTitulo = libro.titulo.toLowerCase().includes(filters.titulo.toLowerCase())
+      const matchCategoria =
+        filters.categoria === "" ||
+        (libro.categoria && libro.categoria.toLowerCase().includes(filters.categoria.toLowerCase()))
+      const matchEditorial =
+        filters.editorial === "" ||
+        libro.editorial?._id === filters.editorial ||
+        libro.editorial === filters.editorial
+      const matchDisponible =
+        filters.disponible === "todos" ||
+        (filters.disponible === "disponible" ? libro.disponible : !libro.disponible)
+      return matchTitulo && matchCategoria && matchEditorial && matchDisponible
+    })
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.titulo.trim()) {
-      setError("El título es requerido")
-      Swal.fire("Atención", "El título es requerido", "warning")
+      Swal.fire("Campo requerido", "El título del libro es obligatorio", "warning")
       return
     }
 
@@ -114,11 +140,15 @@ export default function LibrosTab() {
       setError("")
       fetchLibros()
 
-      Swal.fire(
-        "Éxito",
-        editingId ? "Libro actualizado correctamente" : "Libro agregado correctamente",
-        "success"
-      )
+      Swal.fire({
+        icon: "success",
+        title: editingId ? "Libro actualizado" : "Libro agregado",
+        text: editingId
+          ? "El libro fue actualizado correctamente."
+          : "El libro fue agregado correctamente.",
+        timer: 2000,
+        showConfirmButton: false,
+      })
     } catch (err) {
       setError(err.message)
       Swal.fire("Error", err.message, "error")
@@ -137,32 +167,36 @@ export default function LibrosTab() {
       editorial: libro.editorial?._id || "",
     })
     setEditingId(libro._id)
-    Swal.fire("Modo edición", "Puedes modificar los datos del libro", "info")
+    Swal.fire({
+      icon: "info",
+      title: "Editando libro",
+      text: `Estás editando "${libro.titulo}".`,
+      timer: 1500,
+      showConfirmButton: false,
+    })
   }
 
   const handleDelete = async (id) => {
-    const result = await Swal.fire({
-      title: "¿Estás seguro?",
-      text: "Esta acción eliminará el libro permanentemente",
+    const confirm = await Swal.fire({
+      title: "¿Eliminar libro?",
+      text: "Esta acción no se puede deshacer.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     })
 
-    if (!result.isConfirmed) return
+    if (!confirm.isConfirmed) return
 
     try {
       setLoading(true)
       const response = await fetch(`${API_URL}/libros/${id}`, {
         method: "DELETE",
       })
-      if (!response.ok) throw new Error("Error al eliminar")
-      setError("")
+      if (!response.ok) throw new Error("Error al eliminar libro")
       fetchLibros()
-      Swal.fire("Eliminado", "El libro ha sido eliminado correctamente", "success")
+      Swal.fire("Eliminado", "El libro fue eliminado correctamente", "success")
     } catch (err) {
-      setError(err.message)
       Swal.fire("Error", err.message, "error")
     } finally {
       setLoading(false)
@@ -179,17 +213,24 @@ export default function LibrosTab() {
       editorial: "",
     })
     setEditingId(null)
-    Swal.fire("Cancelado", "Edición cancelada", "info")
+    Swal.fire({
+      icon: "info",
+      title: "Edición cancelada",
+      text: "No se realizaron cambios.",
+      timer: 1500,
+      showConfirmButton: false,
+    })
   }
 
   const getAutorNombre = (id) => autores.find((a) => a._id === id)?.nombre || "Desconocido"
   const getEditorialNombre = (id) => editoriales.find((e) => e._id === id)?.nombre || "Desconocida"
 
+  const filteredLibros = getFilteredLibros()
+
   return (
     <div className={styles.tabContent}>
       <div className={styles.formSection}>
         <h2>{editingId ? "Editar Libro" : "Agregar Nuevo Libro"}</h2>
-        {error && <div className={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className={styles.formGroup}>
@@ -297,13 +338,64 @@ export default function LibrosTab() {
 
       <div className={styles.listSection}>
         <h2>Lista de Libros</h2>
+
+        <div className={styles.filterSection}>
+          <div className={styles.filterGroup}>
+            <label htmlFor="filterTitulo">Buscar por título:</label>
+            <input
+              type="text"
+              id="filterTitulo"
+              name="titulo"
+              value={filters.titulo}
+              onChange={handleFilterChange}
+              placeholder="Nombre del libro..."
+            />
+          </div>
+
+          <div className={styles.filterGroup}>
+            <label htmlFor="filterCategoria">Categoría:</label>
+            <input
+              type="text"
+              id="filterCategoria"
+              name="categoria"
+              value={filters.categoria}
+              onChange={handleFilterChange}
+              placeholder="Filtrar por categoría..."
+            />
+          </div>
+
+          <div className={styles.filterGroup}>
+            <label htmlFor="filterEditorial">Editorial:</label>
+            <select id="filterEditorial" name="editorial" value={filters.editorial} onChange={handleFilterChange}>
+              <option value="">Todas las editoriales</option>
+              {editoriales.map((editorial) => (
+                <option key={editorial._id} value={editorial._id}>
+                  {editorial.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className={styles.filterGroup}>
+            <label htmlFor="filterDisponible">Disponibilidad:</label>
+            <select id="filterDisponible" name="disponible" value={filters.disponible} onChange={handleFilterChange}>
+              <option value="todos">Todos</option>
+              <option value="disponible">Solo disponibles</option>
+              <option value="no-disponible">Solo no disponibles</option>
+            </select>
+          </div>
+        </div>
+
         {loading && !libros.length ? (
           <p className={styles.loading}>Cargando...</p>
-        ) : libros.length === 0 ? (
-          <p className={styles.empty}>No hay libros registrados</p>
+        ) : filteredLibros.length === 0 ? (
+          <p className={styles.empty}>No hay libros que coincidan con los filtros</p>
         ) : (
           <div className={styles.list}>
-            {libros.map((libro) => (
+            <p className={styles.resultCount}>
+              Mostrando {filteredLibros.length} de {libros.length} libros
+            </p>
+            {filteredLibros.map((libro) => (
               <div key={libro._id} className={styles.item}>
                 <div className={styles.itemContent}>
                   <h3>{libro.titulo}</h3>
