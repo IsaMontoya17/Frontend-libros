@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Swal from "sweetalert2"
 import styles from "./Tab.module.css"
 
-const API_URL = "http://localhost:5000/api"
+const API_URL = `${import.meta.env.VITE_API_URL}/api`
 
 export default function EditorialesTab() {
   const [editoriales, setEditoriales] = useState([])
