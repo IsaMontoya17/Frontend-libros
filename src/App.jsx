@@ -22,11 +22,11 @@ function App() {
 
       if (!response.ok) throw new Error("Error al generar el informe")
 
-      // Convertir respuesta en blob (PDF)
+      
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
 
-      // Crear enlace temporal de descarga
+      
       const link = document.createElement("a")
       link.href = url
       link.download = `informe_biblioteca_${new Date().toISOString().split("T")[0]}.pdf`
@@ -34,7 +34,7 @@ function App() {
       link.click()
       document.body.removeChild(link)
 
-      // Liberar memoria
+     
       window.URL.revokeObjectURL(url)
 
       setReportMessage("✅ Informe generado exitosamente")

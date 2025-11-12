@@ -11,7 +11,7 @@
   border-bottom: 2px solid #3b82f6;
 }
 
-/* Agregar estilos para la sección superior del header con flexbox */
+
 .headerTop {
   display: flex;
   justify-content: space-between;
@@ -33,7 +33,7 @@
   font-weight: 300;
 }
 
-/* Agregar estilos para el botón de generar informe */
+
 .reportButton {
   padding: 0.75rem 1.5rem;
   background: #10b981;
@@ -63,7 +63,7 @@
   cursor: not-allowed;
 }
 
-/* Agregar estilos para el mensaje de estado del informe */
+
 .reportMessage {
   margin: 1rem 0 0 0;
   padding: 0.75rem 1rem;

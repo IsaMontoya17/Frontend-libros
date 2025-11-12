@@ -59,7 +59,7 @@
   cursor: not-allowed;
 }
 
-/* Added checkbox-specific styles for better visibility */
+
 .checkboxContainer {
   display: flex;
   align-items: center;
